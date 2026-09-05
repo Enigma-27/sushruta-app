@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu }) => {
+const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu, serverStatus }) => {
   const LOGO_SRC = "https://image2url.com/images/1765805243191-d5f3a19d-770b-41d8-94c1-33d7216f45f0.png";
 
   // Mobile vs Desktop Classes
@@ -47,14 +47,22 @@ const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu }) => {
       
       <aside className={classes + " flex flex-col h-full"}>
         {/* Sidebar Header */}
-        <div className="p-6 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-900 font-bold text-xl tracking-tight">
-            <img src={LOGO_SRC} alt="Logo" className="w-10 h-10 rounded-full" />
-            SUSHRUTA
+        <div className="p-5 border-b flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-blue-900 font-bold text-xl tracking-tight">
+              <img src={LOGO_SRC} alt="Logo" className="w-9 h-9 rounded-full object-cover" />
+              SUSHRUTA
+            </div>
+            <button onClick={closeMenu} className="md:hidden text-slate-400">
+              <i className="ph-bold ph-x text-xl"></i>
+            </button>
           </div>
-          <button onClick={closeMenu} className="md:hidden text-slate-400">
-            <i className="ph-bold ph-x text-xl"></i>
-          </button>
+          {serverStatus && (
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+              <span className={`w-2 h-2 rounded-full ${serverStatus.online ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              {serverStatus.online ? 'Cloud Synchronized' : 'Local Storage Mode'}
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}

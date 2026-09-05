@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
-const EmotionalWellnessTab = ({ data, refreshData, userRole }) => {
+const EmotionalWellnessTab = ({ data, refreshData, userRole, showToast }) => {
   // 1. Role Logic
   const role = (userRole || 'senior').toLowerCase();
   const isDoctor = role === 'doctor';
@@ -26,12 +26,13 @@ const EmotionalWellnessTab = ({ data, refreshData, userRole }) => {
   
   // Filter logs to find mood entries for today
   const todaysMoods = wellnessLogs
-      .filter(l => l.type === 'mood' && l.date === today)
-      .sort((a, b) => b.id - a.id); // Newest first
+      .filter(l => l.type === 'mood' && (l.date === today || l.date?.includes(new Date().toISOString().split('T')[0])))
+      .sort((a, b) => (b.id || 0) - (a.id || 0)); // Newest first
 
   // Calculate Dominant Mood
   const moodCounts = todaysMoods.reduce((acc, curr) => {
-      acc[curr.val] = (acc[curr.val] || 0) + 1;
+      const val = curr.val || curr.value;
+      if (val) acc[val] = (acc[val] || 0) + 1;
       return acc;
   }, {});
   
@@ -50,33 +51,35 @@ const EmotionalWellnessTab = ({ data, refreshData, userRole }) => {
   const [library, setLibrary] = useState(defaultLibrary);
 
   // Handlers
-  const logMood = (m) => {
+  const logMood = async (m) => {
       setMood(m); 
       setIsAddingVideo(false);
       const now = new Date();
       const newLog = { 
-          id: Date.now(), type: 'mood', val: m, 
-          date: now.toLocaleDateString(),
+          type: 'mood', 
+          value: m,
+          val: m, 
+          date: now.toISOString().split('T')[0],
           time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) 
       };
-      // Update Backend
-      const currentData = MockBackend.getData();
-      MockBackend.updateData({ ...currentData, wellnessLogs: [newLog, ...(currentData.wellnessLogs || [])] });
-      refreshData();
+      await DataService.addWellnessLog(newLog);
+      if (refreshData) refreshData();
+      if (showToast) showToast(`Logged mood: ${m}`, "success");
   };
 
-  const saveGratitude = () => {
-      if(!gratitudeInput.trim()) return;
+  const saveGratitude = async () => {
+      if (!gratitudeInput.trim()) return;
       const now = new Date();
       const newLog = { 
-          id: Date.now(), type: 'gratitude', text: gratitudeInput, 
-          date: now.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+          type: 'gratitude', 
+          text: gratitudeInput.trim(), 
+          date: now.toISOString().split('T')[0],
           time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) 
       };
-      const currentData = MockBackend.getData();
-      MockBackend.updateData({ ...currentData, wellnessLogs: [newLog, ...(currentData.wellnessLogs || [])] });
+      await DataService.addWellnessLog(newLog);
       setGratitudeInput(""); 
-      refreshData();
+      if (refreshData) refreshData();
+      if (showToast) showToast("Gratitude note saved!", "success");
   };
 
   const handleAddVideo = () => {

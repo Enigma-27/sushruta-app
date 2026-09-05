@@ -37,16 +37,29 @@ app.use('/api/wellness', wellnessRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/records', recordRoutes);
 
+const { getDBStatus } = require('./config/db');
+
+// Health Check Route
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    server: 'running',
+    database: getDBStatus() ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Base Route for testing
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.send('Sushruta API is running...');
 });
 
 // Error Middleware (Must be after routes)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+const ENV = process.env.NODE_ENV || 'development';
 
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Sushruta Server running in ${ENV} mode on port ${PORT}`);
 });

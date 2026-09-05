@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
-const MedicineTab = ({ data, refreshData, userRole }) => {
+const MedicineTab = ({ data, refreshData, userRole, showToast }) => {
   // 1. Role Logic
   const role = (userRole || 'senior').toLowerCase();
   const isDoctor = role === 'doctor';
@@ -27,64 +27,72 @@ const MedicineTab = ({ data, refreshData, userRole }) => {
   // --- HANDLERS ---
 
   // Doctor: Add New Medicine
-  const handleAddMed = () => {
-    if (!newMed.name || !newMed.dose) return alert("Please enter Name and Dosage");
+  const handleAddMed = async () => {
+    if (!newMed.name || !newMed.dose) {
+      if (showToast) showToast("Please enter Name and Dosage", "error");
+      else alert("Please enter Name and Dosage");
+      return;
+    }
     
     const newEntry = {
-      id: Date.now(),
       name: newMed.name,
       dose: newMed.dose,
       instructions: newMed.instructions,
       schedule: newMed.time,
       category: newMed.category,
       taken: false,
-      stock: 0,
-      expiry: 'N/A',
+      stock: 10,
+      expiry: 'Dec 2026',
       type: newMed.dose.toLowerCase().includes('ml') ? 'Syrup' : 'Tablet'
     };
 
-    const updatedMeds = [...data.meds, newEntry];
-    MockBackend.updateData({ ...data, meds: updatedMeds });
-    refreshData();
+    await DataService.addMedicine(newEntry);
+    if (refreshData) refreshData();
     setIsAdding(false);
     setNewMed({ name: '', dose: '', instructions: '', time: '', category: 'Daily Routine' });
+    if (showToast) showToast("Medicine prescribed successfully!", "success");
   };
 
   // Caretaker: Update Stock
-  const handleUpdateStock = () => {
+  const handleUpdateStock = async () => {
     if (!editingMed) return;
     
-    // Get values directly from DOM for simplicity in this modal structure
-    const stockVal = document.getElementById('edit-stock').value;
-    const expiryVal = document.getElementById('edit-expiry').value;
+    const stockVal = document.getElementById('edit-stock')?.value;
+    const expiryVal = document.getElementById('edit-expiry')?.value;
 
-    const updatedMeds = data.meds.map(m => {
-      if (m.id === editingMed.id) {
-        return { ...m, stock: parseInt(stockVal), expiry: expiryVal };
-      }
-      return m;
+    await DataService.updateMedicine(editingMed.id, {
+      stock: parseInt(stockVal) || 0,
+      expiry: expiryVal || editingMed.expiry
     });
 
-    MockBackend.updateData({ ...data, meds: updatedMeds });
-    refreshData();
+    if (refreshData) refreshData();
     setEditingMed(null);
+    if (showToast) showToast("Medicine stock updated", "success");
+  };
+
+  // Delete Medicine (Doctor or Caretaker)
+  const handleDeleteMed = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm("Remove this medicine prescription?")) {
+      await DataService.deleteMedicine(id);
+      if (refreshData) refreshData();
+      if (showToast) showToast("Medicine removed", "success");
+    }
   };
 
   // Senior & Caretaker: Take Medicine
-  const toggleMed = (id) => {
-    const newMeds = data.meds.map(m => {
-      if (m.id === id) {
-        const isTaking = !m.taken;
-        // Decrease stock if taking, increase if untaking (undo)
-        const newStock = typeof m.stock === 'number' 
-          ? (isTaking ? m.stock - 1 : m.stock + 1) 
-          : m.stock;
-        return { ...m, taken: isTaking, stock: newStock };
-      }
-      return m;
-    });
-    MockBackend.updateData({ ...data, meds: newMeds });
-    refreshData();
+  const toggleMed = async (id) => {
+    const med = (data.meds || []).find(m => m.id === id);
+    if (!med) return;
+
+    const isTaking = !med.taken;
+    const newStock = typeof med.stock === 'number' 
+      ? (isTaking ? Math.max(0, med.stock - 1) : med.stock + 1) 
+      : med.stock;
+
+    await DataService.updateMedicine(id, { taken: isTaking, stock: newStock });
+    if (refreshData) refreshData();
+    if (showToast) showToast(isTaking ? `Taken ${med.name}` : `Unmarked ${med.name}`, "success");
   };
 
   const dailyMeds = data.meds.filter(m => m.category === 'Daily Routine').sort((a, b) => a.taken - b.taken);
@@ -131,26 +139,39 @@ const MedicineTab = ({ data, refreshData, userRole }) => {
         </div>
       </div>
       
-      {/* BUTTON: VISIBLE FOR SENIOR AND CARETAKER */}
-      {canTakeMed && (
-        <button 
-          onClick={(e) => { e.stopPropagation(); toggleMed(m.id); }} 
-          className={`w-full md:w-auto px-8 py-3 md:py-2 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm 
-          ${m.taken 
-            ? 'bg-slate-100 text-slate-400 cursor-default' 
-            : (type === 'sos' 
-              ? 'bg-white border-2 border-red-500 text-red-600 hover:bg-red-50' 
-              : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-200'
-            )
-          }`}
-        >
-          {m.taken ? (
-            <span className="flex items-center justify-center gap-2"><i className="ph-bold ph-check-circle"></i> Taken</span>
-          ) : (
-            type === 'sos' ? 'Record Use' : 'Take Now'
-          )}
-        </button>
-      )}
+      <div className="flex items-center gap-2 w-full md:w-auto">
+        {/* BUTTON: VISIBLE FOR SENIOR AND CARETAKER */}
+        {canTakeMed && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); toggleMed(m.id); }} 
+            className={`w-full md:w-auto px-8 py-3 md:py-2 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm 
+            ${m.taken 
+              ? 'bg-slate-100 text-slate-400 cursor-default' 
+              : (type === 'sos' 
+                ? 'bg-white border-2 border-red-500 text-red-600 hover:bg-red-50' 
+                : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-200'
+              )
+            }`}
+          >
+            {m.taken ? (
+              <span className="flex items-center justify-center gap-2"><i className="ph-bold ph-check-circle"></i> Taken</span>
+            ) : (
+              type === 'sos' ? 'Record Use' : 'Take Now'
+            )}
+          </button>
+        )}
+
+        {/* DELETE BUTTON FOR DOCTOR / CARETAKER */}
+        {(isDoctor || isCaretaker) && (
+          <button
+            onClick={(e) => handleDeleteMed(e, m.id)}
+            className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+            title="Delete Medicine"
+          >
+            <i className="ph-bold ph-trash text-lg"></i>
+          </button>
+        )}
+      </div>
     </div>
   );
 

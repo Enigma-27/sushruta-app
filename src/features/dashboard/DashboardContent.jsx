@@ -6,6 +6,7 @@ import NotificationAlert from '../../components/ui/NotificationAlert';
 import ChartModal from '../../components/charts/ChartModal';
 import HealthScoreRing from '../../components/charts/HealthScoreRing'; 
 import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
 // --- NEW COMPONENT: HEALTH SCORE CARD ---
 const HealthScoreCard = ({ data, refreshData, onShowHistory, setLiveScore, userRole }) => {
@@ -74,10 +75,9 @@ const HealthScoreCard = ({ data, refreshData, onShowHistory, setLiveScore, userR
         if (setLiveScore) setLiveScore(finalScore);
     }, [data]);
 
-    const toggleExercise = () => {
-        const newData = {...data};
-        newData.vitals.exercise = !newData.vitals.exercise;
-        MockBackend.updateData(newData);
+    const toggleExercise = async () => {
+        const nextExercise = !data.vitals.exercise;
+        await DataService.updateVitals({ exercise: nextExercise });
         refreshData();
     };
 
@@ -179,7 +179,7 @@ const HealthScoreCard = ({ data, refreshData, onShowHistory, setLiveScore, userR
     );
 };
 
-const DashboardContent = ({ data, refreshData, user, setTab }) => {
+const DashboardContent = ({ data, refreshData, user, setTab, showToast }) => {
   const [connected, setConnected] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState(null);
@@ -251,30 +251,30 @@ const DashboardContent = ({ data, refreshData, user, setTab }) => {
         setSosStep(1); 
         setTimeout(() => setSosStep(0), 3000); 
     } else { 
-        alert(`🚨 SOS ALERT SENT TO ALL CONTACTS!`);
+        if (showToast) showToast("🚨 Emergency SOS sent to all emergency contacts & doctors!", "error");
+        else alert(`🚨 SOS ALERT SENT TO ALL CONTACTS!`);
         setSosStep(0); 
     }
   };
 
-  const handleSaveManual = (val) => {
-    if(val && editingMetric) {
-        const newData = {...data};
+  const handleSaveManual = async (val) => {
+    if (val && editingMetric) {
         let key = '';
         let finalVal = val;
         let graphVal = parseInt(val, 10); 
 
-        if(editingMetric.includes('Steps')) key = 'steps';
-        else if(editingMetric.includes('BP')) { key = 'bp'; graphVal = parseInt(val.split('/')[0]); finalVal = val; }
-        else if(editingMetric.includes('Sleep')) { key = 'sleep'; finalVal = val.display; graphVal = val.value; }
-        else if(editingMetric.includes('Heart')) key = 'heartRate';
+        if (editingMetric.includes('Steps')) key = 'steps';
+        else if (editingMetric.includes('BP')) { key = 'bp'; graphVal = parseInt(val.split('/')[0]); finalVal = val; }
+        else if (editingMetric.includes('Sleep')) { key = 'sleep'; finalVal = val.display; graphVal = val.value; }
+        else if (editingMetric.includes('Heart')) key = 'heartRate';
 
-        if(key) {
-            if(key === 'heartRate') newData.vitals.heartRate = graphVal;
-            else if(key === 'steps') newData.vitals.steps = graphVal;
-            else newData.vitals[key] = finalVal;
-            
-            MockBackend.updateData(newData);
-            refreshData();
+        if (key) {
+            const vitalsPayload = {
+              [key]: (key === 'heartRate' || key === 'steps') ? graphVal : finalVal
+            };
+            await DataService.updateVitals(vitalsPayload);
+            if (refreshData) refreshData();
+            if (showToast) showToast(`${editingMetric} updated successfully!`, "success");
         }
         setEditingMetric(null);
     }

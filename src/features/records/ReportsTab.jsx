@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
-const ReportsTab = ({ data, refreshData }) => {
+const ReportsTab = ({ data, refreshData, showToast }) => {
   const [localReports, setLocalReports] = useState(data.reports || []);
   const [uploading, setUploading] = useState(false);
   const [reportName, setReportName] = useState('');
@@ -36,10 +36,10 @@ const ReportsTab = ({ data, refreshData }) => {
     
     setUploading(true);
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const now = new Date();
       const newReport = {
-        id: Date.now(),
+        category: 'report',
         name: reportName.trim() || `Report ${now.toLocaleDateString()}`, 
         doctor: docName.trim() || "Self Upload", 
         date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -48,36 +48,27 @@ const ReportsTab = ({ data, refreshData }) => {
         content: e.target.result // Base64
       };
       
-      const currentData = MockBackend.getData();
-      const updatedReports = [newReport, ...(currentData.reports || [])];
-      const newData = { ...currentData, reports: updatedReports };
+      const saved = await DataService.addRecord(newReport);
       
-      const success = MockBackend.updateData(newData);
-      
-      if (success) {
-        setLocalReports(updatedReports);
-        if (refreshData) refreshData();
-        setReportName('');
-        setDocName('');
-        alert("File Added Successfully!");
-      }
+      setLocalReports(prev => [saved, ...prev]);
+      if (refreshData) refreshData();
+      setReportName('');
+      setDocName('');
+      if (showToast) showToast("Report uploaded successfully!", "success");
       
       setUploading(false);
-      if(fileInput.current) fileInput.current.value = "";
+      if (fileInput.current) fileInput.current.value = "";
     };
     reader.readAsDataURL(file);
   };
 
-  const deleteReport = (e, id) => {
+  const deleteReport = async (e, id) => {
     e.stopPropagation();
-    if(confirm('Delete this report?')) {
-      const currentData = MockBackend.getData();
-      const updatedReports = (currentData.reports || []).filter(r => r.id !== id);
-      const newData = { ...currentData, reports: updatedReports };
-      MockBackend.updateData(newData);
-      
-      setLocalReports(updatedReports);
+    if (window.confirm('Delete this report?')) {
+      await DataService.deleteRecord(id, 'report');
+      setLocalReports(prev => prev.filter(r => r.id !== id));
       if (refreshData) refreshData();
+      if (showToast) showToast("Report removed", "success");
     }
   };
 

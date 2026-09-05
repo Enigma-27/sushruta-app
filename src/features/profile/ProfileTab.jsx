@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { DataService } from '../../services/dataService';
 
-const ProfileTab = ({ data, refreshData, userRole = 'senior' }) => {
+const ProfileTab = ({ data, refreshData, userRole = 'senior', user, showToast }) => {
   // 1. NORMALIZE ROLE
   const currentRole = (userRole || 'senior').toLowerCase();
   const isSenior = currentRole === 'senior' || currentRole === 'patient';
@@ -8,8 +9,29 @@ const ProfileTab = ({ data, refreshData, userRole = 'senior' }) => {
 
   // 2. STATE MANAGEMENT
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState(data?.user || { name: "User", age: 65 });
+  const [formData, setFormData] = useState(() => ({
+    name: user?.name || data?.user?.name || "User",
+    phone: user?.phone || data?.user?.phone || "",
+    role: currentRole,
+    dob: data?.user?.dob || "",
+    bloodGroup: data?.user?.bloodGroup || "O+",
+    address: data?.user?.address || "",
+    age: data?.user?.age || 65,
+    emergencyPrimary: data?.user?.emergencyPrimary || { name: '', contact: '', relation: 'Guardian' }
+  }));
   const fileInputRef = useRef(null);
+
+  // Sync formData when data or user changes if not editing
+  useEffect(() => {
+    if (!editMode && (data?.user || user)) {
+      setFormData(prev => ({
+        ...prev,
+        name: user?.name || data?.user?.name || prev.name,
+        phone: user?.phone || data?.user?.phone || prev.phone,
+        ...(data?.user || {})
+      }));
+    }
+  }, [data?.user, user, editMode]);
 
   // --- NEW: CONNECTION LIST STATE ---
   const [connections, setConnections] = useState([]); // Stores list of connected users
@@ -18,7 +40,7 @@ const ProfileTab = ({ data, refreshData, userRole = 'senior' }) => {
 
   // 3. GENERATE DYNAMIC ID (Simulated)
   const [sushrutaId] = useState(() => {
-    const prefix = formData.age >= 60 ? "SNR" : "SH";
+    const prefix = (formData.age || 65) >= 60 ? "SNR" : "SH";
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     return `${prefix}-${randomNum}`;
   });
@@ -42,18 +64,22 @@ const ProfileTab = ({ data, refreshData, userRole = 'senior' }) => {
     }
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     speak("Saving changes to your secure profile.");
-    if (refreshData) refreshData({ ...data, user: formData });
+    await DataService.saveUser(formData);
+    if (refreshData) {
+      refreshData({ ...data, user: formData });
+    }
     setEditMode(false);
-    alert("Profile Updated!");
+    if (showToast) showToast("Profile updated successfully!", "success");
   };
 
   // --- HANDLE ADD CONNECTION ---
   const handleAddConnection = () => {
     // Validation
     if (!newConn.name || !newConn.phone || !newConn.password) {
-      alert("Please fill in Name, Mobile, and Password.");
+      if (showToast) showToast("Please fill in Name, Mobile, and Password.", "error");
+      else alert("Please fill in Name, Mobile, and Password.");
       return;
     }
 
@@ -72,13 +98,14 @@ const ProfileTab = ({ data, refreshData, userRole = 'senior' }) => {
         setConnections([...connections, newEntry]);
         setNewConn({ name: '', role: 'Caretaker', phone: '', password: '' }); // Reset Form
         setIsModalOpen(false); // Close Modal
-        alert("Connection Established Successfully!");
-    }, 800);
+        if (showToast) showToast("Connection Established Successfully!", "success");
+    }, 400);
   };
 
   const removeConnection = (id) => {
-      if(confirm("Remove this person from your connections?")) {
+      if (window.confirm("Remove this person from your connections?")) {
           setConnections(connections.filter(c => c.id !== id));
+          if (showToast) showToast("Connection removed", "success");
       }
   };
 

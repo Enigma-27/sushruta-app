@@ -1,16 +1,29 @@
 const mongoose = require('mongoose');
 
+let isConnected = false;
+
 const connectDB = async () => {
   try {
-    // Attempt to connect to the database using the URI from your .env file
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const uri = process.env.MONGO_URI;
+    if (!uri || uri.includes('<db_password>')) {
+      console.warn('⚠️ Warning: MONGO_URI is not configured or contains placeholder in backend/.env.');
+      return;
+    }
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+    });
+
+    isConnected = true;
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    // Exit process with failure
-    process.exit(1);
+    isConnected = false;
+    console.warn(`⚠️ MongoDB Connection Warning: ${error.message}`);
+    console.warn('Backend server will continue running. Please check your MONGO_URI in backend/.env.');
   }
 };
 
+const getDBStatus = () => isConnected;
+
 module.exports = connectDB;
+module.exports.getDBStatus = getDBStatus;

@@ -1,52 +1,49 @@
 import React, { useState, useRef } from 'react';
-import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
-const InsuranceTab = ({ data, refreshData }) => {
+const InsuranceTab = ({ data, refreshData, showToast }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   // Ensure insuranceDocs array exists
   const myPolicies = data.insuranceDocs || [];
 
-  // --- FILE UPLOAD LOGIC (Safe Mode < 500KB) ---
+  // --- FILE UPLOAD LOGIC ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Limit file size to prevent LocalStorage quota exceeded errors
-    if (file.size > 500000) {
-      alert("⚠️ File too large! Please upload a file smaller than 500KB.");
+    // Limit file size for browser performance
+    if (file.size > 5000000) {
+      if (showToast) showToast("File too large! Please upload a file smaller than 5MB.", "error");
+      else alert("File too large! Please upload a file smaller than 5MB.");
       return;
     }
 
     setUploading(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const newDoc = {
-        id: Date.now(),
+        category: 'insurance',
         name: file.name,
         date: new Date().toLocaleDateString(),
         content: event.target.result, // Data URL (Base64)
         type: file.type.includes('image') ? 'Image' : 'PDF'
       };
 
-      const currentData = MockBackend.getData();
-      const updatedDocs = [newDoc, ...(currentData.insuranceDocs || [])];
-      MockBackend.updateData({ ...currentData, insuranceDocs: updatedDocs });
-      
+      await DataService.addRecord(newDoc);
       setUploading(false);
-      refreshData();
-      alert("Policy Document Saved!");
+      if (refreshData) refreshData();
+      if (showToast) showToast("Policy Document Saved!", "success");
     };
     reader.readAsDataURL(file);
   };
 
-  const deletePolicy = (id) => {
-    if(confirm("Delete this document permanently?")) {
-      const currentData = MockBackend.getData();
-      const updatedDocs = currentData.insuranceDocs.filter(d => d.id !== id);
-      MockBackend.updateData({ ...currentData, insuranceDocs: updatedDocs });
-      refreshData();
+  const deletePolicy = async (id) => {
+    if (window.confirm("Delete this document permanently?")) {
+      await DataService.deleteRecord(id, 'insurance');
+      if (refreshData) refreshData();
+      if (showToast) showToast("Policy removed", "success");
     }
   };
 

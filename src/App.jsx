@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // --- LAYOUTS ---
 import Sidebar from './layout/Sidebar';
@@ -21,9 +21,12 @@ import AppointmentsTab from './features/connect/AppointmentsTab';
 import GovernmentSchemesTab from './features/resources/GovernmentSchemesTab';
 import AiAssistantTab from './features/assistant/AiAssistantTab';
 import MedicineShopTab from './features/shop/MedicineShopTab';
+
 // --- SERVICES & UI ---
 import { MockBackend } from './services/mockBackend';
 import { AuthService } from './services/authService';
+import { DataService } from './services/dataService';
+import * as api from './services/api';
 import Loader from './components/ui/Loader';
 import Toast from './components/ui/Toast';
 
@@ -33,100 +36,121 @@ import './styles/animations.css';
 
 const App = () => {
   // --- GLOBAL STATE ---
-  const [user, setUser] = useState(AuthService.getCurrentUser());
+  const [user, setUser] = useState(() => api.getStoredUser() || AuthService.getCurrentUser());
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [serverStatus, setServerStatus] = useState({ online: false, database: 'disconnected' });
 
   // --- UI STATE ---
   const [sideOpen, setSideOpen] = useState(false);  // Mobile Sidebar
   const [rightOpen, setRightOpen] = useState(false); // Schedule Panel
 
-  // --- INITIAL LOAD ---
+  const showToast = useCallback((msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // --- INITIAL LOAD & SERVER HEALTH ---
   useEffect(() => {
-    // 1. Simulate fetching data from backend
-    const loadData = () => {
-      const dbData = MockBackend.getData();
-      if (dbData) {
-        setData(dbData);
-      } else {
-        // If DB is empty/corrupt, re-init it
+    const unsub = DataService.subscribeStatus((status) => {
+      setServerStatus(status);
+    });
+
+    const init = async () => {
+      try {
+        await DataService.checkHealth();
+        const loadedData = await DataService.loadData();
+        setData(loadedData);
+      } catch (err) {
+        console.error("Init load error:", err);
         MockBackend.initDB();
         setData(MockBackend.getData());
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    // Artificial delay for splash screen feel
-    setTimeout(loadData, 1000);
+    init();
+    return () => unsub();
   }, []);
 
   // --- ACTIONS ---
 
-  // 1. Refresh Data (Passed to children to trigger re-renders after updates)
-  const refreshData = () => {
-    const updated = MockBackend.getData();
+  // 1. Refresh Data
+  const refreshData = async (overrideData) => {
+    if (overrideData) {
+      MockBackend.updateData(overrideData);
+      setData(overrideData);
+      return;
+    }
+    const updated = await DataService.loadData();
     setData(updated);
   };
 
   // 2. Login Handler
-  const handleLogin = (loggedInUser) => {
+  const handleLogin = async (loggedInUser) => {
     AuthService.login(loggedInUser);
-    
-    // If the logged-in user is NOT the generic 'user' in DB, update DB user profile
-    // This allows syncing the login form data to the main dashboard
-    MockBackend.saveUser(loggedInUser);
-    
     setUser(loggedInUser);
-    refreshData();
+    await DataService.saveUser(loggedInUser);
+    const freshData = await DataService.loadData();
+    setData(freshData);
+    showToast(`Welcome, ${loggedInUser.name || 'User'}!`, 'success');
   };
 
   // 3. Logout Handler
   const handleLogout = () => {
-    if(confirm("Are you sure you want to logout?")) {
+    if (window.confirm("Are you sure you want to logout?")) {
+      api.logout();
       AuthService.logout();
       setUser(null);
       setActiveTab('home');
+      showToast("Logged out successfully", "success");
     }
   };
 
   // 4. Reminder Actions (For Right Panel)
-  const addReminder = (text, time, day) => {
-    const newRem = { id: Date.now(), text, time, day: parseInt(day), completed: false, notified: false };
-    const newData = { ...data, reminders: [...data.reminders, newRem] };
-    MockBackend.updateData(newData);
-    refreshData();
+  const addReminder = async (text, time, day) => {
+    const newRem = { text, time, day: parseInt(day), completed: false, notified: false };
+    await DataService.addReminder(newRem);
+    const updated = MockBackend.getData();
+    setData(updated);
+    showToast("Reminder added!", "success");
   };
 
-  const deleteReminder = (id) => {
-    const newData = { ...data, reminders: data.reminders.filter(r => r.id !== id) };
-    MockBackend.updateData(newData);
-    refreshData();
+  const deleteReminder = async (id) => {
+    await DataService.deleteReminder(id);
+    const updated = MockBackend.getData();
+    setData(updated);
+    showToast("Reminder removed", "success");
   };
 
   // --- CONTENT SWITCHER ---
   const renderContent = () => {
-    if (!data) return <div className="p-10 text-center text-slate-400">Error loading data.</div>;
+    if (!data) return <div className="p-10 text-center text-slate-400">Error loading health data.</div>;
+
+    const role = user?.role || 'senior';
 
     switch (activeTab) {
       case 'home': 
-        return <DashboardContent data={data} refreshData={refreshData} user={user} setTab={setActiveTab} />;
+        return <DashboardContent data={data} refreshData={refreshData} user={user} setTab={setActiveTab} showToast={showToast} />;
       case 'meds': 
-        return <MedicineTab data={data} refreshData={refreshData} userRole={user.role} />;
+        return <MedicineTab data={data} refreshData={refreshData} userRole={role} showToast={showToast} />;
       case 'profile': 
-        return <ProfileTab data={data} refreshData={refreshData} userRole={user.role} />;
+        return <ProfileTab data={data} refreshData={refreshData} userRole={role} user={user} showToast={showToast} />;
       case 'insurance': 
-        return <InsuranceTab data={data} refreshData={refreshData} />;
+        return <InsuranceTab data={data} refreshData={refreshData} showToast={showToast} />;
       case 'reports': 
-        return <ReportsTab data={data} refreshData={refreshData} />;
+        return <ReportsTab data={data} refreshData={refreshData} showToast={showToast} />;
       case 'gps': 
         return <GPSModule />;
       case 'wellness': 
-        return <WellnessTab data={data} refreshData={refreshData} userRole={user.role} />;
+        return <WellnessTab data={data} refreshData={refreshData} userRole={role} showToast={showToast} />;
       case 'joy': 
-        return <EmotionalWellnessTab data={data} refreshData={refreshData} userRole={user.role} />;
+        return <EmotionalWellnessTab data={data} refreshData={refreshData} userRole={role} showToast={showToast} />;
       case 'appointments': 
-        return <AppointmentsTab data={data} user={user} refreshData={refreshData} />;
+        return <AppointmentsTab data={data} user={user} refreshData={refreshData} showToast={showToast} />;
       case 'gov': 
         return <GovernmentSchemesTab />;
       case 'assistant': 
@@ -134,7 +158,7 @@ const App = () => {
       case 'shop': 
         return <MedicineShopTab />;
       default: 
-        return <DashboardContent data={data} refreshData={refreshData} user={user} />;
+        return <DashboardContent data={data} refreshData={refreshData} user={user} setTab={setActiveTab} showToast={showToast} />;
     }
   };
 
@@ -150,13 +174,21 @@ const App = () => {
 
   // --- RENDER: AUTH SCREEN ---
   if (!user) {
-    return <AuthContainer onLogin={handleLogin} />;
+    return (
+      <>
+        <Toast msg={toast?.msg} type={toast?.type} onClose={() => setToast(null)} />
+        <AuthContainer onLogin={handleLogin} />
+      </>
+    );
   }
 
   // --- RENDER: MAIN APP LAYOUT ---
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans text-slate-800">
       
+      {/* Toast Notification */}
+      <Toast msg={toast?.msg} type={toast?.type} onClose={() => setToast(null)} />
+
       {/* 1. LEFT SIDEBAR (Navigation) */}
       <Sidebar 
         activeTab={activeTab} 
@@ -165,6 +197,7 @@ const App = () => {
         user={user}
         isOpen={sideOpen}
         closeMenu={() => setSideOpen(false)}
+        serverStatus={serverStatus}
       />
 
       {/* 2. MAIN CONTENT AREA */}
@@ -175,6 +208,26 @@ const App = () => {
           setSideOpen={setSideOpen} 
           setRightOpen={setRightOpen} 
         />
+
+        {/* Desktop Connectivity Bar */}
+        <div className="hidden md:flex items-center justify-between px-6 py-2 bg-white/70 backdrop-blur-sm border-b border-slate-100 text-xs">
+          <div className="flex items-center gap-2 text-slate-500">
+            <span className="font-semibold text-slate-700">Active User:</span> {user.name || 'User'} ({user.role})
+          </div>
+          <div className="flex items-center gap-2">
+            {serverStatus.online ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Backend Online {serverStatus.database === 'connected' ? '(MongoDB Synced)' : '(Local DB Ready)'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 border border-amber-200" title="Backend server offline - running with local browser storage">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                Local Offline Mode
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto custom-scroll relative">

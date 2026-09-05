@@ -1,10 +1,6 @@
-/* Tailwind Directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@import "tailwindcss";
 /* Custom Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
 /* --- GLOBAL VARIABLES --- */
 :root {

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { MockBackend } from '../../services/mockBackend';
+import { DataService } from '../../services/dataService';
 
-const AppointmentsTab = ({ data, user, refreshData }) => {
+const AppointmentsTab = ({ data, user, refreshData, showToast }) => {
   const [view, setView] = useState('list'); // 'list' or 'book'
   
   // Form State
@@ -40,40 +40,41 @@ const AppointmentsTab = ({ data, user, refreshData }) => {
   const appointments = data.appointments || [];
 
   // --- BOOKING LOGIC ---
-  const handleBook = (e) => {
+  const handleBook = async (e) => {
     e.preventDefault();
-    if (!formData.time || !timeState.hh || !timeState.mm) return alert("Please enter a valid time.");
+    if (!formData.time || !timeState.hh || !timeState.mm) {
+      if (showToast) showToast("Please enter a valid time.", "error");
+      else alert("Please enter a valid time.");
+      return;
+    }
 
     const newAppointment = {
-      id: Date.now(),
-      patientId: user.phone,
-      patientName: user.name,
-      ...formData,
+      patientId: user.phone || user._id,
+      patientName: user.name || 'Patient',
+      doctorName: formData.doctorName,
+      specialization: formData.specialization,
+      date: formData.date,
+      time: formData.time,
+      reason: formData.reason,
       status: 'Pending',
       notified: false
     };
 
-    const currentData = MockBackend.getData();
-    const updatedAppointments = [...(currentData.appointments || []), newAppointment];
-    MockBackend.updateData({ ...currentData, appointments: updatedAppointments });
-
-    refreshData();
+    await DataService.bookAppointment(newAppointment);
+    if (refreshData) refreshData();
     setView('list');
     
     // Reset Form
     setFormData({ doctorName: '', specialization: 'General Physician', date: '', time: '', reason: '' });
     setTimeState({ hh: '', mm: '', period: 'AM' });
-    alert("Appointment Request Sent to Doctor!");
+    if (showToast) showToast("Appointment request sent to doctor!", "success");
   };
 
   // --- DOCTOR UPDATE LOGIC ---
-  const updateStatus = (id, newStatus) => {
-    const currentData = MockBackend.getData();
-    const updatedAppointments = currentData.appointments.map(app =>
-      app.id === id ? { ...app, status: newStatus } : app
-    );
-    MockBackend.updateData({ ...currentData, appointments: updatedAppointments });
-    refreshData();
+  const updateStatus = async (id, newStatus) => {
+    await DataService.updateAppointment(id, newStatus);
+    if (refreshData) refreshData();
+    if (showToast) showToast(`Appointment ${newStatus.toLowerCase()}!`, "success");
   };
 
   // --- RENDER: DOCTOR VIEW ---

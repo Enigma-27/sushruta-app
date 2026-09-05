@@ -109,12 +109,8 @@ const AuthContainer = ({ onLogin }) => {
             <SignupForm
               role={role}
               setView={setView}
-              handleInputChange={handleInputChange}
-              loading={loading}
-              setLoading={setLoading}
+              onLogin={onLogin}
               showToast={showToast}
-              formData={formData}
-              setGenOtp={setGenOtp}
             />
           )}
 
