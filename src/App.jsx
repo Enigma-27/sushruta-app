@@ -29,6 +29,7 @@ import { DataService } from './services/dataService';
 import * as api from './services/api';
 import Loader from './components/ui/Loader';
 import Toast from './components/ui/Toast';
+import LanguageSelector from './components/ui/LanguageSelector';
 
 // --- STYLES ---
 import './styles/index.css';
@@ -154,7 +155,7 @@ const App = () => {
       case 'gov': 
         return <GovernmentSchemesTab />;
       case 'assistant': 
-        return <AiAssistantTab />;
+        return <AiAssistantTab data={data} user={user} />;
       case 'shop': 
         return <MedicineShopTab />;
       default: 
@@ -214,7 +215,8 @@ const App = () => {
           <div className="flex items-center gap-2 text-slate-500">
             <span className="font-semibold text-slate-700">Active User:</span> {user.name || 'User'} ({user.role})
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <LanguageSelector variant="pills" />
             {serverStatus.online ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>

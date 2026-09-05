@@ -1,112 +1,366 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { AiService } from '../../services/aiService';
 
-const AiAssistantTab = () => {
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'bot', text: 'Namaste! I am your health assistant. How are you feeling today?' }
+const AiAssistantTab = ({ data, user }) => {
+  const { language, t } = useLanguage();
+
+  const getInitialGreeting = (lang, userName) => {
+    const name = userName || (lang === 'hi' ? 'दादाजी / दादीजी' : lang === 'mr' ? 'आजी / आजोबा' : 'Friend');
+    if (lang === 'hi') {
+      return `🙏 नमस्ते ${name} जी! मैं आपका स्वास्थ्य और भावनात्मक साथी **सुश्रुत मित्र** हूँ। आज आपकी सेहत कैसी है? आप मुझसे अपनी दवाइयों, ब्लड प्रेशर, खान-पान या मन की कोई भी बात साझा कर सकते हैं।`;
+    }
+    if (lang === 'mr') {
+      return `🙏 नमस्कार ${name}! मी तुमचा आरोग्य व भावनिक साथीदार **सुश्रुत मित्र**. आज तुमची तब्येत कशी आहे? तुम्हाला औषधे, बीपी, आहार किंवा मनातील काहीही विचारण्यासाठी मी नेहमी उपलब्ध आहे.`;
+    }
+    return `🙏 Namaste ${name}! I am **Sushruta Mitra**, your caring health and emotional companion. How are you feeling today? You can ask me about your medications, blood pressure, diet, or just talk to me about how your day is going.`;
+  };
+
+  const [messages, setMessages] = useState(() => [
+    { id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name) }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speakingId, setSpeakingId] = useState(null);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('sushruta_gemini_key') || '');
   const chatEndRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  // Auto-scroll to bottom whenever messages change
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Update initial greeting if language changes and only 1 message exists
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length === 1 && messages[0].id === 1) {
+      setMessages([{ id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name) }]);
+    }
+  }, [language, user?.name]);
+
+  // Auto-scroll
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  // Initialize Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-IN';
 
-    // 1. Add User Message
-    const userMsg = { id: Date.now(), sender: 'user', text: input };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput(transcript);
+          handleSendMessage(transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, [language]);
+
+  // Handle Speech Recognition Toggle
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-IN';
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        setIsListening(false);
+      }
+    }
+  };
+
+  // Text-to-Speech (Voice Output)
+  const speakText = (text, id) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      if (speakingId === id) {
+        setSpeakingId(null);
+        return;
+      }
+      
+      // Strip markdown bold/bullets for clean audio
+      const cleanText = text.replace(/[*_#•]/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = 0.95; // Slightly slower for seniors
+      utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-IN';
+
+      utterance.onend = () => setSpeakingId(null);
+      utterance.onerror = () => setSpeakingId(null);
+
+      setSpeakingId(id);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleSendMessage = async (textToSend) => {
+    const query = (textToSend || input).trim();
+    if (!query) return;
+
+    const userMsg = { id: Date.now(), sender: 'user', text: query };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    // 2. Simulate AI Delay & Logic
-    setTimeout(() => {
-      let responseText = "I see. It's best to consult your doctor for persistent symptoms.";
-      const lower = userMsg.text.toLowerCase();
+    const patientContext = {
+      name: user?.name,
+      role: user?.role,
+      meds: data?.meds || [],
+      vitals: data?.vitals || {},
+      age: data?.user?.age || 65
+    };
 
-      // Simple keyword matching logic
-      if (lower.includes('headache') || lower.includes('head hurts')) {
-        responseText = "For a headache, try drinking a glass of water and resting in a quiet, dark room. Check your blood pressure if possible.";
-      } else if (lower.includes('chest pain')) {
-        responseText = "⚠️ Chest pain can be serious. Please use the SOS button immediately or call emergency services if it persists.";
-      } else if (lower.includes('dizzy')) {
-        responseText = "Sit down slowly to avoid falling. Drink water. If you are diabetic, check your sugar levels.";
-      } else if (lower.includes('thank')) {
-        responseText = "You are welcome! Take care.";
-      } else if (lower.includes('hi') || lower.includes('hello')) {
-        responseText = "Hello! How can I help you with your health today?";
-      }
+    try {
+      const botReply = await AiService.generateResponse({
+        userMessage: query,
+        patientContext,
+        language,
+        conversationHistory: messages
+      });
 
-      setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'bot', text: responseText }]);
+      const botMsg = { id: Date.now() + 1, sender: 'bot', text: botReply };
+      setMessages(prev => [...prev, botMsg]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        { id: Date.now() + 1, sender: 'bot', text: "I apologize, I could not process your request right now. Please try again." }
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
+  };
+
+  const saveGeminiKey = (e) => {
+    e.preventDefault();
+    localStorage.setItem('sushruta_gemini_key', geminiKey.trim());
+    setShowKeyModal(false);
+    alert(geminiKey.trim() ? "Google Gemini API Key Saved!" : "Reverted to Local Intelligent Engine.");
+  };
+
+  // Simple Markdown Parser for UI Bubbles
+  const renderFormattedText = (text) => {
+    return text.split('\n').map((line, idx) => {
+      // Bold replacement
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      return (
+        <p key={idx} className={idx > 0 ? "mt-1.5" : ""}>
+          {parts.map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={pIdx} className="font-bold">{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          })}
+        </p>
+      );
+    });
   };
 
   return (
-    <div className="p-4 md:p-6 h-[calc(100vh-80px)] flex flex-col animate-fade-in">
+    <div className="p-3 md:p-6 h-[calc(100vh-70px)] flex flex-col animate-fade-in max-w-5xl mx-auto">
       
       {/* Header */}
-      <div className="bg-white rounded-t-2xl p-4 border-b flex items-center gap-3 shadow-sm">
-        <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-full flex items-center justify-center text-white">
-          <i className="ph-fill ph-robot text-xl"></i>
+      <div className="bg-white rounded-t-3xl p-4 border-b flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-gradient-to-tr from-blue-700 via-indigo-600 to-cyan-500 rounded-2xl flex items-center justify-center text-white shadow-md">
+            <i className="ph-fill ph-robot text-2xl"></i>
+          </div>
+          <div>
+            <h2 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+              {t('aiTitle')}
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                {localStorage.getItem('sushruta_gemini_key') ? 'Gemini 1.5' : 'Hybrid AI'}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">{t('aiSubtitle')}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-bold text-slate-800">Sushruta Assistant</h2>
-          <p className="text-xs text-slate-500 flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-500 rounded-full block"></span> Online
-          </p>
+
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowKeyModal(true)}
+            className="p-2 text-slate-400 hover:text-blue-700 rounded-xl hover:bg-slate-100 transition"
+            title="Configure Gemini Cloud API Key (Optional)"
+          >
+            <i className="ph-bold ph-gear text-xl"></i>
+          </button>
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 bg-slate-50 p-4 overflow-y-auto custom-scroll flex flex-col space-y-3">
+      <div className="flex-1 bg-slate-50 p-4 md:p-6 overflow-y-auto custom-scroll flex flex-col space-y-4">
+        
+        {/* Quick Starter Chips */}
+        {messages.length <= 2 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 animate-fade-in">
+            <button
+              onClick={() => handleSendMessage(t('chipMeds'))}
+              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+            >
+              {t('chipMeds')}
+            </button>
+            <button
+              onClick={() => handleSendMessage(t('chipEmotional'))}
+              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+            >
+              {t('chipEmotional')}
+            </button>
+            <button
+              onClick={() => handleSendMessage(t('chipBP'))}
+              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+            >
+              {t('chipBP')}
+            </button>
+            <button
+              onClick={() => handleSendMessage(t('chipDiet'))}
+              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-green-500 hover:bg-green-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+            >
+              {t('chipDiet')}
+            </button>
+          </div>
+        )}
+
+        {/* Message History */}
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`max-w-[80%] p-3 md:p-4 rounded-2xl relative text-sm md:text-base shadow-sm animate-slide-up ${
+            className={`max-w-[85%] md:max-w-[75%] p-4 rounded-3xl relative text-sm md:text-base shadow-sm animate-slide-up leading-relaxed ${
               m.sender === 'user'
                 ? 'bg-blue-900 text-white rounded-br-none self-end ml-auto'
-                : 'bg-white text-slate-800 rounded-bl-none self-start mr-auto border border-slate-200'
+                : 'bg-white text-slate-800 rounded-bl-none self-start mr-auto border border-slate-100'
             }`}
           >
-            {m.text}
+            {renderFormattedText(m.text)}
+
+            {/* Read Aloud Button for Bot Messages */}
+            {m.sender === 'bot' && (
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => speakText(m.text, m.id)}
+                  className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                    speakingId === m.id
+                      ? 'bg-blue-100 text-blue-900 animate-pulse'
+                      : 'text-slate-400 hover:text-blue-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <i className={`ph-fill ${speakingId === m.id ? 'ph-stop-circle' : 'ph-speaker-high'} text-sm`}></i>
+                  {speakingId === m.id ? t('stopReading') : t('readAloud')}
+                </button>
+              </div>
+            )}
           </div>
         ))}
 
         {/* Typing Indicator */}
         {isTyping && (
-          <div className="bg-white border border-slate-200 p-3 rounded-2xl rounded-bl-none self-start w-16 flex items-center justify-center gap-1 shadow-sm">
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+          <div className="bg-white border border-slate-100 p-4 rounded-3xl rounded-bl-none self-start w-20 flex items-center justify-center gap-1.5 shadow-sm">
+            <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></span>
+            <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></span>
+            <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></span>
           </div>
         )}
         <div ref={chatEndRef}></div>
       </div>
 
-      {/* Input Form */}
-      <form onSubmit={handleSend} className="bg-white p-4 rounded-b-2xl border-t flex gap-2">
+      {/* Input Form with Voice Support */}
+      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }} className="bg-white p-3 md:p-4 rounded-b-3xl border-t flex items-center gap-2 shadow-lg">
+        {/* Voice Input Microphone Button */}
+        <button
+          type="button"
+          onClick={toggleListening}
+          className={`p-3 rounded-2xl transition cursor-pointer flex items-center justify-center ${
+            isListening
+              ? 'bg-red-500 text-white animate-pulse shadow-red-200 shadow-lg'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+          title={isListening ? t('aiListening') : "Tap to speak"}
+        >
+          <i className={`ph-bold ${isListening ? 'ph-microphone-slash' : 'ph-microphone'} text-xl`}></i>
+        </button>
+
+        {/* Text Input */}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your symptoms or question..."
-          className="flex-1 p-3 bg-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition"
+          placeholder={isListening ? t('aiListening') : t('aiPlaceholder')}
+          className="flex-1 p-3 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-900 transition text-sm md:text-base"
         />
+
+        {/* Send Button */}
         <button
           type="submit"
-          className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition shadow-lg flex items-center justify-center"
+          disabled={!input.trim() || isTyping}
+          className="bg-blue-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-800 transition shadow-lg shadow-blue-200 flex items-center justify-center disabled:opacity-50 cursor-pointer"
         >
           <i className="ph-bold ph-paper-plane-right text-xl"></i>
         </button>
       </form>
+
+      {/* Optional Gemini API Key Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <i className="ph-fill ph-sparkle text-yellow-500"></i>
+                Google Gemini API Key
+              </h3>
+              <button onClick={() => setShowKeyModal(false)} className="text-slate-400 hover:text-slate-600">
+                <i className="ph-bold ph-x text-lg"></i>
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              Sushruta Mitra includes an intelligent built-in clinical engine that works 100% offline. If you'd like to enable Google Gemini 1.5 Flash Cloud LLM, paste your free Gemini API key below:
+            </p>
+            <form onSubmit={saveGeminiKey} className="space-y-4">
+              <input
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-900 text-sm"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-sm font-semibold bg-blue-900 text-white rounded-xl hover:bg-blue-800 transition shadow-md"
+                >
+                  Save Key
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -14,10 +14,14 @@ import "@phosphor-icons/web/fill";
 import "@phosphor-icons/web/regular";
 import "@phosphor-icons/web/duotone"; 
 
+import { LanguageProvider } from './context/LanguageContext';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <LanguageProvider>
+        <App />
+      </LanguageProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

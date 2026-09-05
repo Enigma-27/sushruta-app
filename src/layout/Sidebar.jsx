@@ -1,6 +1,9 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import LanguageSelector from '../components/ui/LanguageSelector';
 
 const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu, serverStatus }) => {
+  const { t } = useLanguage();
   const LOGO_SRC = "https://image2url.com/images/1765805243191-d5f3a19d-770b-41d8-94c1-33d7216f45f0.png";
 
   // Mobile vs Desktop Classes
@@ -8,20 +11,20 @@ const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu, serverS
     ? "absolute inset-y-0 left-0 z-40 w-64 bg-white border-r shadow-2xl transform translate-x-0 transition-transform duration-300"
     : "absolute inset-y-0 left-0 z-40 w-64 bg-white border-r shadow-xl transform -translate-x-full transition-transform duration-300 md:static md:translate-x-0";
 
-  // Navigation Items Config
+  // Navigation Items Config with dynamic translations
   const navItems = [
-    { id: 'home', icon: 'ph-squares-four', label: 'Dashboard' },
-    { id: 'assistant', icon: 'ph-robot', label: 'AI Assistant' },
-    { id: 'gps', icon: 'ph-map-pin', label: 'Live Location' },
-    { id: 'meds', icon: 'ph-pill', label: 'Medicines' },
-    { id: 'wellness', icon: 'ph-plant', label: 'Wellness & Diet' },
-    { id: 'joy', icon: 'ph-heart', label: 'Emotional Wellbeing' },
-    { id: 'reports', icon: 'ph-chart-bar', label: 'Reports' },
-    { id: 'appointments', icon: 'ph-stethoscope', label: user?.role === 'doctor' ? 'Patient Requests' : 'Appointments' },
-    { id: 'insurance', icon: 'ph-shield-check', label: 'Insurance' },
-    { id: 'shop', icon: 'ph-shopping-cart', label: 'Buy Medicines' },
-    { id: 'gov', icon: 'ph-bank', label: 'Govt. Schemes' },
-    { id: 'profile', icon: 'ph-user-circle', label: 'My Profile' }
+    { id: 'home', icon: 'ph-squares-four', label: t('navDashboard') },
+    { id: 'assistant', icon: 'ph-robot', label: t('navAssistant') },
+    { id: 'gps', icon: 'ph-map-pin', label: t('navGPS') },
+    { id: 'meds', icon: 'ph-pill', label: t('navMeds') },
+    { id: 'wellness', icon: 'ph-plant', label: t('navWellness') },
+    { id: 'joy', icon: 'ph-heart', label: t('navJoy') },
+    { id: 'reports', icon: 'ph-chart-bar', label: t('navReports') },
+    { id: 'appointments', icon: 'ph-stethoscope', label: user?.role === 'doctor' ? t('navPatientRequests') : t('navAppointments') },
+    { id: 'insurance', icon: 'ph-shield-check', label: t('navInsurance') },
+    { id: 'shop', icon: 'ph-shopping-cart', label: t('navShop') },
+    { id: 'gov', icon: 'ph-bank', label: t('navGov') },
+    { id: 'profile', icon: 'ph-user-circle', label: t('navProfile') }
   ];
 
   // Filtering Logic based on User Role
@@ -77,6 +80,12 @@ const Sidebar = ({ activeTab, setTab, onLogout, user, isOpen, closeMenu, serverS
             </button>
           ))}
         </nav>
+
+        {/* Language Selection Section */}
+        <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">भाषा / Lang:</span>
+          <LanguageSelector />
+        </div>
 
         {/* User Footer */}
         <div className="p-4 border-t bg-slate-50 flex items-center gap-3">

@@ -4,7 +4,8 @@ import RoleSelection from './RoleSelection';
 import SignupForm from './SignupForm';
 import OtpVerification from './OtpVerification';
 import Toast from '../../components/ui/Toast';
-import { DB } from '../../services/database'; // We will create this in the next step
+import LanguageSelector from '../../components/ui/LanguageSelector';
+import { DB } from '../../services/database';
 
 const AuthContainer = ({ onLogin }) => {
   // State for managing the active view
@@ -83,7 +84,10 @@ const AuthContainer = ({ onLogin }) => {
         </div>
 
         {/* RIGHT SIDE: Dynamic View Switching */}
-        <div className="md:w-7/12 p-8 md:p-12 bg-white flex flex-col justify-center">
+        <div className="md:w-7/12 p-8 md:p-12 bg-white flex flex-col justify-center relative">
+          <div className="absolute top-4 right-6 z-20">
+            <LanguageSelector variant="pills" />
+          </div>
 
           {view === 'login' && (
             <LoginView

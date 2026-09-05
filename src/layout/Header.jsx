@@ -1,4 +1,5 @@
 import React from 'react';
+import LanguageSelector from '../components/ui/LanguageSelector';
 
 const Header = ({ setSideOpen, setRightOpen }) => {
   const LOGO_SRC = "https://image2url.com/images/1766163568484-919924f6-d48d-4888-8754-e489e0c9e000.png";
@@ -24,11 +25,14 @@ const Header = ({ setSideOpen, setRightOpen }) => {
         </span>
       </div>
 
-      {/* Right: Open Schedule (Calendar) */}
-      <button onClick={() => setRightOpen(true)} className="text-slate-600 p-2 relative">
-        <i className="ph-bold ph-calendar-blank text-2xl"></i>
-        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-      </button>
+      {/* Right Actions: Language + Open Schedule */}
+      <div className="flex items-center gap-2">
+        <LanguageSelector />
+        <button onClick={() => setRightOpen(true)} className="text-slate-600 p-2 relative">
+          <i className="ph-bold ph-calendar-blank text-2xl"></i>
+          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+      </div>
     </header>
   );
 };
