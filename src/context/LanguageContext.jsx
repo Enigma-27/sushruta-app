@@ -88,18 +88,36 @@ export const translations = {
     confirm: "Confirm",
     reject: "Reject",
     
-    // AI Assistant
-    aiTitle: "Sushruta Mitra - AI Companion",
-    aiSubtitle: "Your caring clinical & emotional health companion",
+    // AI Assistant - General & Senior
+    aiTitle: "Sushruta Mitra - Senior Companion",
+    aiSubtitle: "Your loving, patient companion for health and heartfelt conversation",
     aiPlaceholder: "Ask anything about your health, feelings, or medicines...",
     aiListening: "Listening... speak now",
     aiTypeOrSpeak: "Type or use the microphone to talk",
     readAloud: "Listen",
     stopReading: "Stop",
-    chipMeds: "💊 Check my scheduled medicines",
-    chipEmotional: "💛 I am feeling lonely / anxious",
+    chipMeds: "💊 Review my today's medicines",
+    chipEmotional: "💛 I feel lonely / want emotional comfort",
     chipBP: "📊 Explain my Blood Pressure reading",
-    chipDiet: "🥗 Healthy diet tips for seniors",
+    chipDiet: "🥗 Gentle diet & hydration advice",
+
+    // AI Assistant - Caretaker Specialization
+    aiTitleCaretaker: "Sushruta Mitra - Caregiver Partner",
+    aiSubtitleCaretaker: "Specialized guidance for senior care, challenging behaviors & caregiver wellbeing",
+    aiPlaceholderCaretaker: "Ask about senior behaviors, burnout, medicine refusal, or safe transfers...",
+    chipCaretakerUnkind: "🤝 Senior is angry or refusing medicines",
+    chipCaretakerBurnout: "💆 Caregiver burnout & emotional support",
+    chipCaretakerSBAR: "📋 How to report patient symptoms to doctor",
+    chipCaretakerSafety: "🛡️ Safe physical transfer & fall prevention",
+
+    // AI Assistant - Doctor Specialization
+    aiTitleDoctor: "Sushruta Clinical AI - Physician Copilot",
+    aiSubtitleDoctor: "Evidence-based geriatric pharmacotherapy, drug interactions & triage",
+    aiPlaceholderDoctor: "Inquire about Beers criteria, polypharmacy, renal dosing, or SBAR notes...",
+    chipDoctorInteractions: "💊 Geriatric Drug Interactions & Beers Criteria",
+    chipDoctorHTN: "🩺 Isolated Systolic HTN in elderly protocol",
+    chipDoctorDelirium: "🧠 Delirium vs Dementia clinical assessment",
+    chipDoctorSBAR: "📝 Draft an SBAR clinical transition note",
     
     // Common
     save: "Save",
@@ -193,8 +211,8 @@ export const translations = {
     confirm: "स्वीकार करें",
     reject: "अस्वीकार करें",
     
-    // AI Assistant
-    aiTitle: "सुश्रुत मित्र - एआई साथी",
+    // AI Assistant - General & Senior
+    aiTitle: "सुश्रुत मित्र - वरिष्ठ साथी",
     aiSubtitle: "आपकी स्वास्थ्य व भावनात्मक देखभाल का सच्चा मित्र",
     aiPlaceholder: "अपने स्वास्थ्य, दवा या मन की बात यहाँ लिखें या बोलें...",
     aiListening: "सुन रहा हूँ... कृपया बोलिए",
@@ -205,6 +223,24 @@ export const translations = {
     chipEmotional: "💛 मुझे अकेलापन या चिंता लग रही है",
     chipBP: "📊 मेरे ब्लड प्रेशर का अर्थ समझाएं",
     chipDiet: "🥗 वरिष्ठ नागरिकों के लिए हल्का व पौष्टिक आहार",
+
+    // AI Assistant - Caretaker Specialization
+    aiTitleCaretaker: "सुश्रुत मित्र - केयरगिवर साथी",
+    aiSubtitleCaretaker: "वरिष्ठ देखभाल, कठिन व्यवहार समाधान एवं केयरगिवर मानसिक संबल",
+    aiPlaceholderCaretaker: "वरिष्ठ नागरिक के व्यवहार, तनाव, दवा न लेना या देखभाल संबंधित सवाल पूछें...",
+    chipCaretakerUnkind: "🤝 वरिष्ठ नागरिक गुस्सा कर रहे हैं या दवा नहीं ले रहे",
+    chipCaretakerBurnout: "💆 केयरगिवर तनाव एवं भावनात्मक संबल",
+    chipCaretakerSBAR: "📋 डॉक्टर को मरीज के लक्षण कैसे रिपोर्ट करें",
+    chipCaretakerSafety: "🛡️ मरीज को सुरक्षित उठाना व गिरने से बचाना",
+
+    // AI Assistant - Doctor Specialization
+    aiTitleDoctor: "सुश्रुत क्लिनिकल एआई - फिजिशियन कोपायलट",
+    aiSubtitleDoctor: "वृद्धावस्था फार्माकोथेरेपी, ड्रग इंटरैक्शन एवं क्लिनिकल ट्राइएज",
+    aiPlaceholderDoctor: "बीयर्स क्राइटेरिया, पॉलीफार्मेसी, रीनल डोज़ या क्लिनिकल नोट्स पूछें...",
+    chipDoctorInteractions: "💊 वृद्धावस्था ड्रग इंटरैक्शन एवं बीयर्स क्राइटेरिया",
+    chipDoctorHTN: "🩺 बुजुर्गों में आइसोलेटेड सिस्टोलिक बीपी प्रोटोकॉल",
+    chipDoctorDelirium: "🧠 डेलिरियम बनाम डिमेंशिया क्लिनिकल मूल्यांकन",
+    chipDoctorSBAR: "📝 एसबीएआर (SBAR) क्लिनिकल समरी तैयार करें",
     
     // Common
     save: "सुरक्षित करें",
@@ -298,8 +334,8 @@ export const translations = {
     confirm: "मंजूर करा",
     reject: "नाकारा",
     
-    // AI Assistant
-    aiTitle: "सुश्रुत मित्र - एआय साथी",
+    // AI Assistant - General & Senior
+    aiTitle: "सुश्रुत मित्र - ज्येष्ठ साथीदार",
     aiSubtitle: "तुमचा प्रेमळ आरोग्य व भावनिक मार्गदर्शक",
     aiPlaceholder: "तुमचे आरोग्य, औषधे किंवा मनातील भावना येथे बोला किंवा लिहा...",
     aiListening: "ऐकत आहे... कृपया बोला",
@@ -310,6 +346,24 @@ export const translations = {
     chipEmotional: "💛 मला एकटेपणा किंवा चिंता वाटतेय",
     chipBP: "📊 माझ्या ब्लड प्रेशरचा अर्थ काय आहे?",
     chipDiet: "🥗 ज्येष्ठ नागरिकांसाठी हलका व पौष्टिक आहार",
+
+    // AI Assistant - Caretaker Specialization
+    aiTitleCaretaker: "सुश्रुत मित्र - केअरटेकर मार्गदर्शक",
+    aiSubtitleCaretaker: "ज्येष्ठांची काळजी, कठीण वागणूक हाताळणी व केअरटेकर भावनिक आधार",
+    aiPlaceholderCaretaker: "ज्येष्ठांचा स्वभाव, केअरटेकर ताण, औषध न घेणे याबद्दल विचारा...",
+    chipCaretakerUnkind: "🤝 ज्येष्ठ व्यक्ती रागावत आहेत किंवा औषध घेत नाहीत",
+    chipCaretakerBurnout: "💆 केअरटेकर थकवा व भावनिक आधार",
+    chipCaretakerSBAR: "📋 डॉक्टरांना रुग्णाची लक्षणे कशी सांगायची",
+    chipCaretakerSafety: "🛡️ रुग्णाला सुरक्षित उचलणे व तोल जाण्यापासून रोखणे",
+
+    // AI Assistant - Doctor Specialization
+    aiTitleDoctor: "सुश्रुत क्लिनिकल एआय - फिजिशियन साथी",
+    aiSubtitleDoctor: "वृद्धावस्था औषधोपचार, औषधी परस्परसंवाद व क्लिनिकल ट्राइएज",
+    aiPlaceholderDoctor: "बीयर्स निकष, पॉलीफार्मसी, रेनल डोस किंवा क्लिनिकल नोटबद्दल विचारा...",
+    chipDoctorInteractions: "💊 ज्येष्ठ रुग्णांमधील औषध परस्परसंवाद (Beers Criteria)",
+    chipDoctorHTN: "🩺 वृद्धांमधील सिस्टोलिक बीपी उपचार प्रोटोकॉल",
+    chipDoctorDelirium: "🧠 डेलिरियम विरूद्ध डिमेंशिया क्लिनिकल तपासणी",
+    chipDoctorSBAR: "📝 SBAR क्लिनिकल समरी तयार करा",
     
     // Common
     save: "जतन करा",

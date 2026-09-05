@@ -4,20 +4,45 @@ import { AiService } from '../../services/aiService';
 
 const AiAssistantTab = ({ data, user }) => {
   const { language, t } = useLanguage();
+  const role = (user?.role || 'senior').toLowerCase();
 
-  const getInitialGreeting = (lang, userName) => {
-    const name = userName || (lang === 'hi' ? 'दादाजी / दादीजी' : lang === 'mr' ? 'आजी / आजोबा' : 'Friend');
+  const getInitialGreeting = (lang, userName, userRole) => {
+    const r = (userRole || 'senior').toLowerCase();
+    const name = userName || (lang === 'hi' ? 'साथी' : lang === 'mr' ? 'मित्रा' : 'Friend');
+
+    if (r === 'caretaker') {
+      if (lang === 'hi') {
+        return `🤝 **नमस्ते ${name} जी!** मैं **सुश्रुत मित्र**, आपका समर्पित केयरगिवर साथी हूँ।\n\nकिसी बुजुर्ग की देखरेख करना अत्यंत पुण्य, पर भावनात्मक और शारीरिक रूप से चुनौतीपूर्ण कार्य है। यदि वरिष्ठ सदस्य गुस्सा कर रहे हों, दवा न ले रहे हों, या आपको मानसिक थकान व तनाव महसूस हो रहा हो, तो मैं आपकी हर कदम पर व्यावहारिक सलाह व संबल देने के लिए यहाँ हूँ। आज मैं आपकी क्या मदद कर सकता हूँ?`;
+      }
+      if (lang === 'mr') {
+        return `🤝 **नमस्कार ${name}!** मी **सुश्रुत मित्र**, तुमचा समर्पित केअरटेकर मार्गदर्शक.\n\nज्येष्ठांची काळजी घेणे हे अत्यंत मोलाचे पण दमवणारे काम आहे. वरिष्ठ व्यक्ती रागावत असतील, औषध घेण्यास नकार देत असतील, किंवा तुम्हाला स्वतःला मानसिक विश्रांती हवी असेल, तर मी सदैव आपल्यासोबत आहे. आज मी आपल्याला कशी मदत करू?`;
+      }
+      return `🤝 **Namaste ${name}!** I am **Sushruta Mitra**, your specialized Caregiver Partner.\n\nCaring for an elder is one of the most compassionate yet emotionally taxing responsibilities. Whether you are dealing with challenging moods, medicine refusal, safe transfers, or simply feeling overwhelmed and need emotional support for yourself, I am here for you 24/7. How can I support your caregiving journey today?`;
+    }
+
+    if (r === 'doctor') {
+      if (lang === 'hi') {
+        return `🩺 **सादर प्रणाम डॉ. ${name}!** मैं **सुश्रुत क्लिनिकल एआई** हूँ, आपका जेरियाट्रिक फिजिशियन कोपायलट।\n\nमैं बीयर्स क्राइटेरिया (Beers Criteria), पॉलीफार्मेसी ड्रग इंटरैक्शन, रीनल डोज़ एडजस्टमेंट, और SBAR क्लिनिकल समरी ड्राफ्टिंग में सहायता के लिए सक्रिय हूँ।`;
+      }
+      if (lang === 'mr') {
+        return `🩺 **सस्नेह नमस्कार डॉ. ${name}!** मी **सुश्रुत क्लिनिकल एआय**, तुमचा जेरियाट्रिक फिजिशियन कोपायलट.\n\nबीयर्स क्रायटेरिया (Beers Criteria) तपासणी, पॉलीफार्मसी ड्रग परस्परसंवाद, रेनल डोस ॲडजस्टमेंट आणि SBAR क्लिनिकल ट्रान्झिशन समरीसाठी मी सज्ज आहे.`;
+      }
+      return `🩺 **Greetings Dr. ${name}!** I am **Sushruta Clinical AI**, your geriatric physician copilot.\n\nI am equipped to assist with Beers Criteria screening, polypharmacy interaction audits, renal/hepatic dosing considerations, and drafting structured SBAR transition summaries. How can I assist your clinical workflow today?`;
+    }
+
+    // Senior citizen (Default)
+    const elderHonorific = userName || (lang === 'hi' ? 'दादाजी / दादीजी' : lang === 'mr' ? 'आजी / आजोबा' : 'Friend');
     if (lang === 'hi') {
-      return `🙏 नमस्ते ${name} जी! मैं आपका स्वास्थ्य और भावनात्मक साथी **सुश्रुत मित्र** हूँ। आज आपकी सेहत कैसी है? आप मुझसे अपनी दवाइयों, ब्लड प्रेशर, खान-पान या मन की कोई भी बात साझा कर सकते हैं।`;
+      return `🙏 नमस्ते ${elderHonorific} जी! मैं आपका स्वास्थ्य और भावनात्मक साथी **सुश्रुत मित्र** हूँ। आज आपकी सेहत कैसी है? आप मुझसे अपनी दवाइयों, ब्लड प्रेशर, खान-पान या मन की कोई भी बात साझा कर सकते हैं।`;
     }
     if (lang === 'mr') {
-      return `🙏 नमस्कार ${name}! मी तुमचा आरोग्य व भावनिक साथीदार **सुश्रुत मित्र**. आज तुमची तब्येत कशी आहे? तुम्हाला औषधे, बीपी, आहार किंवा मनातील काहीही विचारण्यासाठी मी नेहमी उपलब्ध आहे.`;
+      return `🙏 नमस्कार ${elderHonorific}! मी तुमचा आरोग्य व भावनिक साथीदार **सुश्रुत मित्र**. आज तुमची तब्येत कशी आहे? तुम्हाला औषधे, बीपी, आहार किंवा मनातील काहीही विचारण्यासाठी मी नेहमी उपलब्ध आहे.`;
     }
-    return `🙏 Namaste ${name}! I am **Sushruta Mitra**, your caring health and emotional companion. How are you feeling today? You can ask me about your medications, blood pressure, diet, or just talk to me about how your day is going.`;
+    return `🙏 Namaste ${elderHonorific}! I am **Sushruta Mitra**, your caring health and emotional companion. How are you feeling today? You can ask me about your medications, blood pressure, diet, or just talk to me about how your day is going.`;
   };
 
   const [messages, setMessages] = useState(() => [
-    { id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name) }
+    { id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name, role) }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -28,12 +53,12 @@ const AiAssistantTab = ({ data, user }) => {
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Update initial greeting if language changes and only 1 message exists
+  // Update initial greeting if language or role changes and only 1 message exists
   useEffect(() => {
     if (messages.length === 1 && messages[0].id === 1) {
-      setMessages([{ id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name) }]);
+      setMessages([{ id: 1, sender: 'bot', text: getInitialGreeting(language, user?.name, role) }]);
     }
-  }, [language, user?.name]);
+  }, [language, user?.name, role]);
 
   // Auto-scroll
   useEffect(() => {
@@ -182,16 +207,21 @@ const AiAssistantTab = ({ data, user }) => {
       <div className="bg-white rounded-t-3xl p-4 border-b flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 bg-gradient-to-tr from-blue-700 via-indigo-600 to-cyan-500 rounded-2xl flex items-center justify-center text-white shadow-md">
-            <i className="ph-fill ph-robot text-2xl"></i>
+            <i className={`ph-fill ${role === 'doctor' ? 'ph-stethoscope' : role === 'caretaker' ? 'ph-heart-handshake' : 'ph-robot'} text-2xl`}></i>
           </div>
           <div>
             <h2 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
-              {t('aiTitle')}
+              {role === 'caretaker' ? t('aiTitleCaretaker') : role === 'doctor' ? t('aiTitleDoctor') : t('aiTitle')}
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                 {localStorage.getItem('sushruta_gemini_key') ? 'Gemini 1.5' : 'Hybrid AI'}
               </span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                {role}
+              </span>
             </h2>
-            <p className="text-xs text-slate-500">{t('aiSubtitle')}</p>
+            <p className="text-xs text-slate-500">
+              {role === 'caretaker' ? t('aiSubtitleCaretaker') : role === 'doctor' ? t('aiSubtitleDoctor') : t('aiSubtitle')}
+            </p>
           </div>
         </div>
 
@@ -213,30 +243,88 @@ const AiAssistantTab = ({ data, user }) => {
         {/* Quick Starter Chips */}
         {messages.length <= 2 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 animate-fade-in">
-            <button
-              onClick={() => handleSendMessage(t('chipMeds'))}
-              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
-            >
-              {t('chipMeds')}
-            </button>
-            <button
-              onClick={() => handleSendMessage(t('chipEmotional'))}
-              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
-            >
-              {t('chipEmotional')}
-            </button>
-            <button
-              onClick={() => handleSendMessage(t('chipBP'))}
-              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
-            >
-              {t('chipBP')}
-            </button>
-            <button
-              onClick={() => handleSendMessage(t('chipDiet'))}
-              className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-green-500 hover:bg-green-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
-            >
-              {t('chipDiet')}
-            </button>
+            {role === 'caretaker' ? (
+              <>
+                <button
+                  onClick={() => handleSendMessage(t('chipCaretakerUnkind'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipCaretakerUnkind')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipCaretakerBurnout'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-rose-500 hover:bg-rose-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipCaretakerBurnout')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipCaretakerSBAR'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipCaretakerSBAR')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipCaretakerSafety'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipCaretakerSafety')}
+                </button>
+              </>
+            ) : role === 'doctor' ? (
+              <>
+                <button
+                  onClick={() => handleSendMessage(t('chipDoctorInteractions'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipDoctorInteractions')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipDoctorHTN'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipDoctorHTN')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipDoctorDelirium'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-purple-500 hover:bg-purple-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipDoctorDelirium')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipDoctorSBAR'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipDoctorSBAR')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleSendMessage(t('chipMeds'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipMeds')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipEmotional'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipEmotional')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipBP'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipBP')}
+                </button>
+                <button
+                  onClick={() => handleSendMessage(t('chipDiet'))}
+                  className="text-left p-3 rounded-2xl bg-white border border-slate-200 hover:border-green-500 hover:bg-green-50 transition text-xs md:text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+                >
+                  {t('chipDiet')}
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -303,7 +391,15 @@ const AiAssistantTab = ({ data, user }) => {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={isListening ? t('aiListening') : t('aiPlaceholder')}
+          placeholder={
+            isListening 
+              ? t('aiListening') 
+              : role === 'caretaker' 
+              ? t('aiPlaceholderCaretaker') 
+              : role === 'doctor' 
+              ? t('aiPlaceholderDoctor') 
+              : t('aiPlaceholder')
+          }
           className="flex-1 p-3 bg-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-900 transition text-sm md:text-base"
         />
 
